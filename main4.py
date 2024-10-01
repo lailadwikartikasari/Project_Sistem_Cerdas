@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from io import StringIO
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pandas as pd
 from PyQt5.QtWidgets import QMessageBox
-import requests
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import StandardScaler
@@ -15,6 +13,17 @@ from sklearn.metrics import confusion_matrix, classification_report
 from sklearn import metrics
 import random
 from PyQt5.QtGui import QDoubleValidator
+import matplotlib.pyplot as plt
+import seaborn as sns
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import classification_report
+import requests
+from io import StringIO
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget, QMessageBox
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -181,8 +190,21 @@ class Ui_MainWindow(object):
         # Keluar Button
         self.pushButton_keluar = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_keluar.setGeometry(QtCore.QRect(690, 470, 101, 34))  # Pindahkan di samping akurasi
-        self.pushButton_keluar.setStyleSheet("border-radius:15px; background-color: rgb(244, 124, 124); border: none; color: black;")
+        self.pushButton_keluar.setStyleSheet("border-radius:15px; background-color: rgb(255, 0, 0); border: none; color: black;")
         self.pushButton_keluar.setObjectName("pushButton_keluar")
+        
+        # Button Confusion Matrix
+        # self.pushButton_confusion_matrix = QtWidgets.QPushButton(self.centralwidget)
+        # self.pushButton_confusion_matrix.setGeometry(QtCore.QRect(800, 390, 150, 34))  # Sesuaikan posisi sesuai layout Anda
+        # self.pushButton_confusion_matrix.setStyleSheet("border-radius:15px; background-color: rgb(0, 255, 255); border: none; color: black;")
+        # self.pushButton_confusion_matrix.setObjectName("pushButton_confusion_matrix")
+
+        # Button Classification Report
+        # self.pushButton_classification_report = QtWidgets.QPushButton(self.centralwidget)
+        # self.pushButton_classification_report.setGeometry(QtCore.QRect(800, 390, 150, 34))
+        # self.pushButton_classification_report.setStyleSheet("border-radius:15px; background-color: rgb(0, 255, 255); border: none; color: black;")
+        # self.pushButton_classification_report.setObjectName("pushButton_classification_report")
+
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.retranslateUi(MainWindow)
@@ -211,6 +233,9 @@ class Ui_MainWindow(object):
         self.pushButton_clear.setText(_translate("MainWindow", "Hapus"))
         self.label_14.setText(_translate("MainWindow", "Akurasi"))
         self.pushButton_keluar.setText(_translate("MainWindow", "Keluar"))
+        # self.pushButton_confusion_matrix.setText(_translate("MainWindow", "Confusion Matrix"))  # Tambahkan label untuk tombol
+        # self.pushButton_classification_report.setText(_translate("MainWindow", "Classification Report"))
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -225,10 +250,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.accuracy = None
         self.akurasi = None
 
-        # Hubungkan tombol proses, keluar dan clear dengan metode masing-masing
+        # Hubungkan tombol proses, keluar, clear, dan confusion matrix dengan metode masing-masing
         self.ui.pushButton.clicked.connect(self.process)
         self.ui.pushButton_clear.clicked.connect(self.clear_inputs)
         self.ui.pushButton_keluar.clicked.connect(self.exit_application)
+        # self.ui.pushButton_confusion_matrix.clicked.connect(self.show_confusion_matrix)
+        # self.ui.pushButton_classification_report.clicked.connect(self.show_classification_report)
+
+
 
 
         # Path file CSV yang akan dimuat otomatis
@@ -240,6 +269,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
         self.file_path = pd.read_csv(csv_raw)  # Sesuaikan path file CSV
         print(self.file_path.head(10))
+
 
         # Panggil fungsi untuk memuat data dan melatih model
         self.load_excel_file()
@@ -259,18 +289,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Set eksklusivitas grup agar hanya satu checkbox yang bisa dipilih
         self.activity_level_group.setExclusive(True)
+        # self.ui.pushButton_classification_report.setEnabled(False)  # Disable button on app start
 
     def clear_inputs(self):
         """Mengosongkan semua input teks dan checkbox dengan konfirmasi dari pengguna."""
+        print("clear_inputs called")  # Debugging: Cek apakah metode ini dipanggil
         reply = QMessageBox.question(
             self,
             "Konfirmasi",
-            "Apakah Anda yakin ingin menghapus semua data?",
+            "Apakah Anda yakin ingin menghapus semua data? Ini akan menghapus data, matriks, dan laporan.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
+            print("User confirmed clear")  # Debugging: Cek apakah pengguna mengonfirmasi
             # Kosongkan kolom input teks
             self.ui.plainTextEdit.clear()
             self.ui.plainTextEdit_2.clear()
@@ -294,10 +327,26 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.checkBox_6.setChecked(False)  # Aktivitas 4
             self.activity_level_group.setExclusive(True)
 
-            # Reset flag pemrosesan
-            self.processed = False
+            # Hapus atau reset matriks
+            if hasattr(self.ui, 'matrix_table'):
+                self.ui.matrix_table.clearContents()  # Kosongkan semua isi tabel
+                self.ui.matrix_table.setRowCount(0)  # Reset jumlah baris jika diperlukan
+
+            # Hapus confusion matrix jika sudah ditampilkan
+            if hasattr(self, 'confusion_matrix_figure'):
+                plt.close(self.confusion_matrix_figure)  # Menutup plot confusion matrix
+                self.confusion_matrix_figure = None
+
+            # Hapus jendela classification report jika sudah ditampilkan
+            if hasattr(self, 'report_window') and self.report_window is not None:
+                self.report_window.close()  # Menutup jendela report
+                self.report_window = None  # Set menjadi None untuk memastikan tidak ada referensi yang tersisa
+        # Set flag pemrosesan menjadi False
+        self.processed = False
+            
     def load_excel_file(self):
         """Memuat file CSV dan memproses kolom Height dan Weight."""
+        
         try:
             self.data = self.file_path
 
@@ -337,11 +386,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 nb = GaussianNB()
                 nb.fit(X_train, y_train)
 
-                # 12. Predict on the test set
+                # Predict on the test set
                 y_pred = nb.predict(X_test)
-                print(y_pred)
                 self.akurasi = metrics.accuracy_score(y_test, y_pred)
-                print(self.akurasi)
+                print(f"Akurasi: {self.akurasi}")
 
                 # Latih model Naive Bayes
                 self.model = GaussianNB()
@@ -354,7 +402,142 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception as e:
                 print(f"Gagal melatih model: {str(e)}")
 
-    
+    def show_confusion_matrix(self):
+        """Menampilkan confusion matrix dari model yang telah dilatih."""
+        if self.model is None:
+            QMessageBox.warning(self, "Error", "Model belum dilatih. Harap latih model terlebih dahulu!")
+            return
+
+        try:
+            # Ambil data uji dan prediksi
+            X = self.data[['Age', 'Height', 'Weight', 'BMI', 'PhysicalActivityLevel']]
+            y = self.data['ObesityCategory']
+
+            # Normalisasi fitur menggunakan scaler yang sama
+            X_scaled = self.scaler.transform(X)
+
+            # Resampling data menggunakan SMOTEENN
+            smoteenn = SMOTEENN()
+            X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y)
+
+            # Under-sampling tambahan menggunakan RandomUnderSampler jika diperlukan
+            under_sampler = RandomUnderSampler()
+            X_resampled, y_resampled = under_sampler.fit_resample(X_resampled, y_resampled)
+
+            # Split data menjadi training dan testing
+            X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+            # Prediksi hasil menggunakan model yang sudah dilatih
+            y_pred = self.model.predict(X_test)
+
+            # Hitung confusion matrix
+            cm = confusion_matrix(y_test, y_pred)
+
+            # Plot confusion matrix menggunakan seaborn heatmap
+            self.confusion_matrix_figure = plt.figure(figsize=(8, 6))  # Simpan referensi figure
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=self.model.classes_, yticklabels=self.model.classes_)
+            plt.xlabel("Predicted Labels")
+            plt.ylabel("True Labels")
+            plt.title("Confusion Matrix")
+
+            # Tampilkan plot
+            plt.show()
+   
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Terjadi kesalahan saat menampilkan confusion matrix: {str(e)}")
+
+    def show_classification_report(self):
+        """Menampilkan classification report dari model yang telah dilatih sebagai gambar PyQt."""
+        print("show_classification_report called")  # Debugging: Cek apakah metode ini dipanggil
+        if not self.processed:
+            QMessageBox.warning(self, "Error", "Proses belum dilakukan. Harap proses data terlebih dahulu!")
+            return
+
+        if self.model is None:
+            QMessageBox.warning(self, "Error", "Model belum dilatih. Harap latih model terlebih dahulu!")
+            return
+
+        try:
+            # Ambil data uji dan prediksi
+            X = self.data[['Age', 'Height', 'Weight', 'BMI', 'PhysicalActivityLevel']]
+            y = self.data['ObesityCategory']
+
+            # Normalisasi fitur menggunakan scaler yang sama
+            X_scaled = self.scaler.transform(X)
+
+            # Resampling menggunakan SMOTEENN (jika perlu)
+            smoteenn = SMOTEENN()
+            X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y)
+
+            # Split data menjadi training dan testing
+            X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+            # Prediksi hasil
+            y_pred = self.model.predict(X_test)
+
+            # Buat classification report dengan format output_dict=True untuk mempermudah manipulasi data
+            report = classification_report(y_test, y_pred, target_names=self.model.classes_, output_dict=True)
+
+            # Hitung total support
+            total_support = sum([values['support'] for key, values in report.items() if isinstance(values, dict)])
+
+            # Ambil nilai support dari macro avg dan weighted avg
+            macro_support = report['macro avg']['support']
+            weighted_support = report['weighted avg']['support']
+
+            # Pastikan nilai support untuk accuracy sesuai dengan nilai macro dan weighted avg
+            if total_support != macro_support or total_support != weighted_support:
+                total_support = max(macro_support, weighted_support)
+
+            # Menyiapkan data untuk tabel
+            headers = ["", "precision", "recall", "f1-score", "support"]
+            data = []
+            for key, values in report.items():
+                if key == 'accuracy':
+                    # Tampilkan akurasi dengan support yang disesuaikan
+                    data.append([key, "", "", f"{values:.2f}", f"{total_support:.0f}"])  # Menggunakan total support yang sama
+                elif key not in ['macro avg', 'weighted avg']:  # Regular classes
+                    data.append([key, f"{values['precision']:.2f}", f"{values['recall']:.2f}", f"{values['f1-score']:.2f}", f"{values['support']:.0f}"])
+                else:  # Macro and weighted averages
+                    data.append([key, f"{values['precision']:.2f}", f"{values['recall']:.2f}", f"{values['f1-score']:.2f}", f"{values['support']:.0f}"])
+
+            # Menggambar tabel dengan matplotlib
+            fig, ax = plt.subplots(figsize=(10, len(data) * 0.5))  # Menyesuaikan ukuran gambar
+            ax.axis('tight')
+            ax.axis('off')
+            table = ax.table(cellText=data, colLabels=headers, cellLoc='center', loc='center')
+
+            # Simpan gambar sebagai file sementara
+            report_path = 'classification_report.png'
+            plt.savefig(report_path, bbox_inches='tight', pad_inches=0.1)
+            plt.close(fig)  # Menutup figure setelah disimpan
+
+            # Muat gambar ke dalam QLabel
+            image = QImage(report_path)
+            pixmap = QPixmap.fromImage(image)
+            label = QLabel()
+            label.setPixmap(pixmap)
+
+            # Layout dan menampilkan gambar dalam QWidget
+            layout = QVBoxLayout()
+            layout.addWidget(label)
+
+            if hasattr(self, 'report_window') and self.report_window is not None:
+                self.report_window.close()  # Menutup jendela report yang ada
+
+            self.report_window = QWidget()
+            self.report_window.setWindowTitle("Classification Report")
+            self.report_window.setLayout(layout)
+
+            # Atur ukuran jendela
+            self.report_window.setFixedSize(pixmap.size())
+
+            # Tampilkan jendela
+            self.report_window.show()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Terjadi kesalahan saat menampilkan classification report: {str(e)}")
+
     def process(self):
         """Memproses input dari pengguna dan melakukan prediksi."""
         if self.data is not None and self.model is not None:
@@ -378,20 +561,20 @@ class MainWindow(QtWidgets.QMainWindow):
                     tinggi = float(tinggi_input.replace('.', '').replace(',', '.'))
                     berat = float(berat_input.replace('.', '').replace(',', '.'))
                 except ValueError:
-                    QMessageBox.warning(self, "Notifikasi", "Masukkan data sesuai dengan format yang benar!")
+                    QMessageBox.warning(self, "Notifikasi", "Input harus berupa angka! Mohon masukkan angka yang valid.")
                     return
-                
+
                 # Batasan panjang input
                 if not usia_input.isdigit() or len(usia_input) < 1 or len(usia_input) > 2:
                     QMessageBox.warning(self, "Notifikasi", "Usia harus terdiri dari 2 angka!")
                     return
 
-                if not tinggi_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(tinggi_input) < 3 or len(tinggi_input) > 10:
-                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 hingga 5 angka dengan koma/titik sebagai pemisah desimal!")
+                if not tinggi_input.isdigit() or len(tinggi_input) < 3 or len(tinggi_input) > 3:
+                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 angka!")
                     return
-                
-                if not berat_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(berat_input) < 2 or len(berat_input) > 10:
-                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 2 atau 3 angka dan koma/titik sebagai pemisah desimal!")
+
+                if not berat_input.isdigit() or len(berat_input) < 2 or len(berat_input) > 3:
+                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 3 angka!")
                     return
 
                 # Hitung BMI
@@ -457,13 +640,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 # Set flag pemrosesan menjadi True
                 self.processed = True
 
+                # Tampilkan Confusion Matrix setelah prediksi
+                self.show_confusion_matrix()
+                
+                # Tampilkan Classification Report
+                self.show_classification_report()
+
             except ValueError:
                 QMessageBox.warning(self, "Notifikasi", "Pastikan semua input sudah diisi dengan benar!")
+            # Debug: Print setelah pemrosesan
+            print("Processing completed.")
         else:
-            QMessageBox.warning(self, "Notifikasi", "Harap muat file CSV dan latih model terlebih dahulu!")
+            QMessageBox.warning(self, "Data Error", "Harap muat file CSV dan latih model terlebih dahulu!")
 
     def exit_application(self):
         """Menutup aplikasi dengan konfirmasi dari pengguna."""
+        print("exit_application called")  # Debugging: Cek apakah metode ini dipanggil
         reply = QMessageBox.question(
             self,
             "Konfirmasi",
@@ -473,8 +665,13 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
         if reply == QMessageBox.Yes:
+            print("User confirmed exit")  # Debugging: Cek apakah pengguna mengonfirmasi keluar
             self.close()
 
+
+
+
+    
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
