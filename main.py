@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from io import StringIO
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pandas as pd
 from PyQt5.QtWidgets import QMessageBox
+import requests
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import StandardScaler
@@ -230,7 +232,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         # Path file CSV yang akan dimuat otomatis
-        self.file_path = "D:/PROJECT SISTEM CERDAS/obesity_data.csv"  # Sesuaikan path file CSV
+        url = 'https://drive.google.com/file/d/13uZ2Mz8qMdb0PS3agFet35Luy50OgadS/view?usp=drive_link'
+        file_id = url.split('/')[-2]
+        dwn_url = 'https://drive.google.com/uc?id=' + file_id
+        url_2 = requests.get(dwn_url).text
+        csv_raw = StringIO(url_2)
+    
+        self.file_path = pd.read_csv(csv_raw)  # Sesuaikan path file CSV
+        print(self.file_path.head(10))
 
         # Panggil fungsi untuk memuat data dan melatih model
         self.load_excel_file()
@@ -290,7 +299,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_excel_file(self):
         """Memuat file CSV dan memproses kolom Height dan Weight."""
         try:
-            self.data = pd.read_csv(self.file_path)
+            self.data = self.file_path
 
             # Konversi kolom Height dan Weight
             for column in ['Height', 'Weight']:
