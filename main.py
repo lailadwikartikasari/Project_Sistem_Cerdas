@@ -386,12 +386,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     QMessageBox.warning(self, "Notifikasi", "Usia harus terdiri dari 2 angka!")
                     return
 
-                if not tinggi_input.isdigit() or len(tinggi_input) < 3 or len(tinggi_input) > 3:
-                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 angka!")
+                if not tinggi_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(tinggi_input) < 3 or len(tinggi_input) > 10:
+                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 hingga 5 angka dengan koma/titik sebagai pemisah desimal!")
                     return
                 
-                if not berat_input.isdigit() or len(berat_input) < 2 or len(berat_input) > 3:
-                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 3 angka!")
+                if not berat_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(berat_input) < 2 or len(berat_input) > 10:
+                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 2 atau 3 angka dan koma/titik sebagai pemisah desimal!")
                     return
 
                 # Hitung BMI
