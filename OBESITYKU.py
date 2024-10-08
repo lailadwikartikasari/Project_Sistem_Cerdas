@@ -17,6 +17,8 @@ import random
 from PyQt5.QtGui import QDoubleValidator
 
 class Ui_MainWindow(object):
+
+    #desain tampilan
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1000, 600)
@@ -299,16 +301,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_excel_file(self):
         """Memuat file CSV dan memproses kolom Height dan Weight."""
         try:
+            # Membaca file CSV
             self.data = self.file_path
 
-            # Konversi kolom Height dan Weight
+            # Mengolah kolom Height dan Weight satu per satu
             for column in ['Height', 'Weight']:
-                # Ganti titik sebagai pemisah ribuan dengan string kosong
+                 # Menghapus titik yang digunakan sebagai pemisah ribuan
                 self.data[column] = self.data[column].astype(str).str.replace('.', '', regex=False)
-                # Pastikan data dalam format float (misalnya setelah menghilangkan pemisah ribuan)
+                 # Mengubah data menjadi format angka (float) setelah menghapus pemisah ribuan
                 self.data[column] = pd.to_numeric(self.data[column], errors='coerce')
 
-            # Cek apakah ada nilai yang tidak bisa dikonversi
+            # Memeriksa apakah ada nilai yang tidak bisa diubah menjadi angka
             if self.data['Height'].isnull().any() or self.data['Weight'].isnull().any():
                 raise ValueError("Beberapa nilai di kolom Height atau Weight tidak valid setelah pemrosesan.")
 
@@ -387,11 +390,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     return
 
                 if not tinggi_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(tinggi_input) < 3 or len(tinggi_input) > 10:
-                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 hingga 5 angka dengan koma/titik sebagai pemisah desimal!")
+                    QMessageBox.warning(self, "Notifikasi", "Tinggi harus terdiri dari 3 hingga 10 angka dengan koma/titik sebagai pemisah desimal!")
                     return
                 
                 if not berat_input.replace('.', '', 1).replace(',', '', 1).isdigit() or len(berat_input) < 2 or len(berat_input) > 10:
-                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 2 atau 3 angka dan koma/titik sebagai pemisah desimal!")
+                    QMessageBox.warning(self, "Notifikasi", "Berat harus terdiri dari 2 atau 10 angka dan koma/titik sebagai pemisah desimal!")
                     return
 
                 # Hitung BMI
