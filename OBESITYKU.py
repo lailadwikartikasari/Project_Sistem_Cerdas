@@ -244,7 +244,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.file_path.head(10))
 
         # Panggil fungsi untuk memuat data dan melatih model
-        self.load_excel_file()
+        self.load_cvs_file()
         self.train_model()
 
         # Membuat grup tombol agar hanya satu checkbox dapat dipilih
@@ -298,7 +298,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Reset flag pemrosesan
             self.processed = False
-    def load_excel_file(self):
+    def load_cvs_file(self):
         """Memuat file CSV dan memproses kolom Height dan Weight."""
         try:
             # Membaca file CSV
@@ -323,30 +323,30 @@ class MainWindow(QtWidgets.QMainWindow):
         """Melatih model Naive Bayes dengan data yang dimuat."""
         if self.data is not None:
             try:
-                # Pilih fitur dan target
+                 # Memilih fitur (variabel yang digunakan untuk memprediksi) dan target (label yang ingin diprediksi)
                 X = self.data[['Age', 'Height', 'Weight', 'BMI', 'PhysicalActivityLevel']]
                 y = self.data['ObesityCategory']
 
-                # Normalisasi fitur
-                self.scaler = StandardScaler()
-                X_scaled = self.scaler.fit_transform(X)
+                # Normalisasi fitur agar memiliki skala yang sama
+                self.scaler = StandardScaler()  # Membuat objek
+                X_scaled = self.scaler.fit_transform(X)  # Mengubah fitur menjadi skala yang sama
 
-                # Resampling data menggunakan SMOTEENN
-                smoteenn = SMOTEENN()
-                X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y)
+                # Menggunakan SMOTEENN untuk menangani data yang tidak seimbang
+                smoteenn = SMOTEENN() #membuat objek
+                X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y) # Menghasilkan data baru yang seimbang
 
-                # Split data menjadi training dan testing
+                # Membagi data menjadi data pelatihan dan data pengujian
                 X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
                 nb = GaussianNB()
-                nb.fit(X_train, y_train)
+                nb.fit(X_train, y_train)#melatih model
 
-                # 12. Predict on the test set
+                # Memprediksi hasil untuk data pengujian
                 y_pred = nb.predict(X_test)
                 print(y_pred)
                 self.akurasi = metrics.accuracy_score(y_test, y_pred)
                 print(self.akurasi)
 
-                # Latih model Naive Bayes
+                # Latih model Naive Bayes baru
                 self.model = GaussianNB()
                 self.model.fit(X_train, y_train)
 
