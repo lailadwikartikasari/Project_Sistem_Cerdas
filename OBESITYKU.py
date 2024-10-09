@@ -217,9 +217,9 @@ class Ui_MainWindow(object):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        self.processed = False
+        self.ui = Ui_MainWindow() 
+        self.ui.setupUi(self) 
+        self.processed = False 
 
         # Atribut untuk menyimpan data dan model
         self.data = None
@@ -306,9 +306,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Mengolah kolom Height dan Weight satu per satu
             for column in ['Height', 'Weight']:
-                 # Menghapus titik yang digunakan sebagai pemisah ribuan
                 self.data[column] = self.data[column].astype(str).str.replace('.', '', regex=False)
-                 # Mengubah data menjadi format angka (float) setelah menghapus pemisah ribuan
                 self.data[column] = pd.to_numeric(self.data[column], errors='coerce')
 
             # Memeriksa apakah ada nilai yang tidak bisa diubah menjadi angka
@@ -328,12 +326,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 y = self.data['ObesityCategory']
 
                 # Normalisasi fitur agar memiliki skala yang sama
-                self.scaler = StandardScaler()  # Membuat objek
-                X_scaled = self.scaler.fit_transform(X)  # Mengubah fitur menjadi skala yang sama
+                self.scaler = StandardScaler()  
+                X_scaled = self.scaler.fit_transform(X) 
 
                 # Menggunakan SMOTEENN untuk menangani data yang tidak seimbang
-                smoteenn = SMOTEENN() #membuat objek
-                X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y) # Menghasilkan data baru yang seimbang
+                smoteenn = SMOTEENN() 
+                X_resampled, y_resampled = smoteenn.fit_resample(X_scaled, y) 
 
                 # Membagi data menjadi data pelatihan dan data pengujian
                 X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
